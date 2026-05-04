@@ -6,7 +6,7 @@
 <title>停管專案績效總覽</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
-  :root { --bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--border:rgba(255,255,255,0.07);--text:#e8edf5;--muted:#6b7a96;--accent:#3b82f6;--green:#10b981;--red:#ef4444;--amber:#f59e0b;--font-mono:'DM Mono',monospace;--font:'Noto Sans TC',sans-serif; }
+  :root{--bg:#0a0e1a;--surface:#111827;--surface2:#1a2235;--border:rgba(255,255,255,0.07);--text:#e8edf5;--muted:#6b7a96;--accent:#3b82f6;--green:#10b981;--red:#ef4444;--amber:#f59e0b;--font-mono:'DM Mono',monospace;--font:'Noto Sans TC',sans-serif;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;padding:24px;}
   .header{display:flex;align-items:baseline;gap:16px;margin-bottom:24px;border-bottom:1px solid var(--border);padding-bottom:16px;flex-wrap:wrap;}
@@ -17,6 +17,12 @@
   .spinner{font-size:28px;animation:spin 1s linear infinite;display:inline-block;margin-bottom:12px;}
   @keyframes spin{to{transform:rotate(360deg);}}
   .error-box{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:16px;color:var(--red);font-size:13px;margin-bottom:20px;}
+  /* Month tabs */
+  .month-bar{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
+  .month-bar label{font-size:12px;color:var(--muted);}
+  .month-btn{padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--muted);background:transparent;border:1px solid var(--border);font-family:var(--font);transition:all 0.2s;}
+  .month-btn.active{color:var(--accent);background:rgba(59,130,246,0.1);border-color:rgba(59,130,246,0.3);}
+  .month-btn:hover:not(.active){background:var(--surface2);}
   .controls{display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap;}
   .controls label{font-size:12px;color:var(--muted);}
   .day-select{background:var(--surface2);color:var(--text);border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-family:var(--font-mono);font-size:13px;cursor:pointer;}
@@ -33,7 +39,6 @@
   .seg-arrow{font-size:10px;color:var(--muted);padding:0 2px;padding-bottom:5px;}
   .weather-note{font-size:11px;display:flex;align-items:center;gap:5px;font-family:var(--font-mono);margin-left:auto;padding:4px 10px;border-radius:6px;white-space:nowrap;}
   .weather-note.good{color:var(--green);background:rgba(16,185,129,0.1);}
-  .weather-note.ok{color:var(--muted);background:rgba(255,255,255,0.04);}
   .weather-note.warn{color:var(--amber);background:rgba(245,158,11,0.1);}
   .weather-note.bad{color:var(--red);background:rgba(239,68,68,0.1);}
   .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
@@ -93,6 +98,10 @@
 </div>
 <div id="loadingArea" class="loading"><div class="spinner">⟳</div><br>資料載入中...</div>
 <div id="mainContent" style="display:none">
+  <div class="month-bar">
+    <label>月份：</label>
+    <div id="monthBtns"></div>
+  </div>
   <div class="controls">
     <label>查看日期：</label>
     <select class="day-select" id="daySelect" onchange="renderDay()"></select>
@@ -118,40 +127,60 @@
 </div>
 <script>
 const API_URL='https://script.google.com/macros/s/AKfycbwiGSf4FajeelfoaqU6NrnOl-_LlWLp5JWGT6C6uulJfvBim57lZiJa-PvrTanhiVJV/exec';
-let allData={},allDates=[],currentTab='雙和';
+let allData={},allDates=[],currentTab='雙和',currentMonth='';
 function wIcon(w){if(!w)return'';if(w.includes('大雨'))return'⛈️';if(w.includes('雨'))return'🌧️';if(w.includes('陰'))return'⛅';if(w.includes('晴'))return'☀️';return'🌡️';}
 function wScore(w){return w.split('/').reduce((s,x)=>{if(x.includes('大雨'))return s+3;if(x.includes('雨'))return s+2;if(x.includes('陰'))return s+1;return s;},0);}
 function wNote(s){if(s===0)return{text:'晴天，利於開單',cls:'good'};if(s<=2)return{text:'部分時段降雨，績效略受影響',cls:'warn'};if(s<=4)return{text:'多時段降雨，預計影響績效',cls:'warn'};return{text:'全日惡劣天氣，績效明顯受影響',cls:'bad'};}
 function fmt(n){return n>=10000?(n/10000).toFixed(1)+'萬':Number(n).toLocaleString();}
 function fmtFull(n){return Number(n).toLocaleString();}
 function getWeekday(dateStr){const parts=dateStr.split('/');const d=new Date(2026,parseInt(parts[0])-1,parseInt(parts[1]));return['日','一','二','三','四','五','六'][d.getDay()];}
-async function loadData(){
-  try{
-    const res=await fetch(API_URL);
-    const json=await res.json();
-    if(!json.success)throw new Error('API回傳失敗');
+
+async function loadMonth(month) {
+  try {
+    const url = month ? API_URL+'?month='+month : API_URL;
+    const res = await fetch(url);
+    const json = await res.json();
+    if(!json.success) throw new Error(json.error||'API回傳失敗');
+
+    // 更新月份按鈕
+    const mb = document.getElementById('monthBtns');
+    mb.innerHTML = '';
+    (json.availableMonths||[]).forEach(m => {
+      const monthNum = m.match(/\d+/)[0];
+      const btn = document.createElement('button');
+      btn.className = 'month-btn' + (m === json.currentMonth ? ' active' : '');
+      btn.textContent = m;
+      btn.onclick = () => loadMonth(monthNum);
+      mb.appendChild(btn);
+    });
+
+    currentMonth = json.currentMonth;
+    document.getElementById('lastUpdate').textContent = '最後更新：'+(json.updatedAt||'');
+
     allData={};
     json.data.forEach(row=>{if(!allData[row.venue])allData[row.venue]=[];allData[row.venue].push(row);});
     const venues=Object.keys(allData);
-    if(!venues.length)throw new Error('沒有資料');
+    if(!venues.length) throw new Error('沒有資料');
     allDates=allData[venues[0]].map(d=>d.date);
-    document.getElementById('lastUpdate').textContent='最後更新：'+(json.updatedAt||'');
+
     const sel=document.getElementById('daySelect');
     sel.innerHTML='';
     allDates.forEach(d=>{
       const isH=allData[venues[0]].find(r=>r.date===d)?.isHoliday;
       const opt=document.createElement('option');
-      opt.value=d;opt.text=d+(isH?' (假日)':' (平日)');
+      opt.value=d; opt.text=d+'('+getWeekday(d)+')'+(isH?' 假':'');
       sel.appendChild(opt);
     });
     sel.value=allDates[allDates.length-1];
+
     document.getElementById('loadingArea').style.display='none';
     document.getElementById('mainContent').style.display='block';
-    renderDay();renderChart();
-  }catch(e){
-    document.getElementById('loadingArea').innerHTML='<div class="error-box">⚠ 資料載入失敗：'+e.message+'<br><small>請確認 API 已正確部署，或重新整理頁面</small></div>';
+    renderDay(); renderChart();
+  } catch(e) {
+    document.getElementById('loadingArea').innerHTML='<div class="error-box">⚠ 資料載入失敗：'+e.message+'</div>';
   }
 }
+
 function renderDay(){
   const day=document.getElementById('daySelect').value;
   const venues=['雙和','中友','南區'];
@@ -183,7 +212,7 @@ function renderDay(){
     const p=e.weather.split('/'),am=p[0]||'',noon=p[1]||'',pm=p[2]||'';
     const score=wScore(e.weather),note=wNote(score);
     const impact=score>=3?`<div class="weather-impact ${note.cls}">⚠ ${note.text}</div>`:'';
-    vb.innerHTML+=`<div class="venue ${pass?'pass':'fail'}"><div class="venue-name">${v}場</div><div class="venue-type">${day} · ${e.isHoliday?'假日':'平日'} · 目標 ${fmtFull(e.target)}</div><div class="perf-value ${pass?'pass':'fail'}">${fmtFull(e.total)}</div><div class="diff-badge ${pass?'pass':'fail'}" style="margin-top:6px">${pass?'超標 +':'差距 -'}${Math.abs(e.diff).toLocaleString()} 格</div><div class="venue-weather"><span class="wi">${wIcon(am)}</span><span>${am}</span><span style="opacity:.3">›</span><span class="wi">${wIcon(noon)}</span><span>${noon}</span><span style="opacity:.3">›</span><span class="wi">${wIcon(pm)}</span><span>${pm}</span></div>${impact}<div class="target-row"><span>達成率</span><span>${e.rate}%</span></div></div>`;
+    vb.innerHTML+=`<div class="venue ${pass?'pass':'fail'}"><div class="venue-name">${v}場</div><div class="venue-type">${day}(${getWeekday(day)}) · ${e.isHoliday?'假日':'平日'} · 目標 ${fmtFull(e.target)}</div><div class="perf-value ${pass?'pass':'fail'}">${fmtFull(e.total)}</div><div class="diff-badge ${pass?'pass':'fail'}" style="margin-top:6px">${pass?'超標 +':'差距 -'}${Math.abs(e.diff).toLocaleString()} 格</div><div class="venue-weather"><span class="wi">${wIcon(am)}</span><span>${am}</span><span style="opacity:.3">›</span><span class="wi">${wIcon(noon)}</span><span>${noon}</span><span style="opacity:.3">›</span><span class="wi">${wIcon(pm)}</span><span>${pm}</span></div>${impact}<div class="target-row"><span>達成率</span><span>${e.rate}%</span></div></div>`;
   });
 }
 function switchTab(name,btn){currentTab=name;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderChart();}
@@ -198,7 +227,7 @@ function renderChart(){
     chart.innerHTML+=`<div class="bar-row"><div class="bar-date">${d.date}(${getWeekday(d.date)})</div><div class="bar-wi" title="${d.weather}">${wIcon(am)}</div><div class="bar-wrap"><div class="bar-fill ${pass?'pass':'fail'}" style="width:${pct}%"></div><div class="bar-target-line" style="left:${tpct}%"></div></div><div class="bar-val">${fmtFull(d.total)}</div></div>`;
   });
 }
-loadData();
+loadMonth(null);
 </script>
 </body>
 </html>
