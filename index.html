@@ -288,7 +288,12 @@ function renderDay(){
   });
 }
 
-function switchTab(name,btn){currentTab=name;document.querySelectorAll('.tab-bar:first-of-type .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderChart();}
+function switchTab(name,btn){
+  currentTab=name;
+  btn.closest('.tab-bar').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderChart();
+}
 
 function renderChart(){
   const days=allData[currentTab]||[];if(!days.length)return;
