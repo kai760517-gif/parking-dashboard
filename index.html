@@ -17,7 +17,6 @@
   .spinner{font-size:28px;animation:spin 1s linear infinite;display:inline-block;margin-bottom:12px;}
   @keyframes spin{to{transform:rotate(360deg);}}
   .error-box{background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:8px;padding:16px;color:var(--red);font-size:13px;margin-bottom:20px;}
-  /* Month tabs */
   .month-bar{display:flex;align-items:center;gap:8px;margin-bottom:20px;flex-wrap:wrap;}
   .month-bar label{font-size:12px;color:var(--muted);}
   .month-btn{padding:5px 14px;border-radius:6px;font-size:12px;cursor:pointer;color:var(--muted);background:transparent;border:1px solid var(--border);font-family:var(--font);transition:all 0.2s;}
@@ -42,7 +41,7 @@
   .weather-note.warn{color:var(--amber);background:rgba(245,158,11,0.1);}
   .weather-note.bad{color:var(--red);background:rgba(239,68,68,0.1);}
   .summary-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px;}
-  @media(max-width:600px){.summary-grid,.venues{grid-template-columns:1fr;}}
+  @media(max-width:600px){.summary-grid,.venues,.geo-grid{grid-template-columns:1fr;}}
   .card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px 20px;position:relative;overflow:hidden;}
   .card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
   .card.pass::before{background:var(--green);}.card.fail::before{background:var(--red);}
@@ -88,6 +87,38 @@
   .legend{display:flex;gap:16px;font-size:11px;color:var(--muted);align-items:center;margin-top:10px;flex-wrap:wrap;}
   .legend-item{display:flex;align-items:center;gap:5px;}
   .legend-dot{width:10px;height:10px;border-radius:2px;}
+
+  /* ===== 地磁區塊樣式 ===== */
+  .section-divider{display:flex;align-items:center;gap:12px;margin:28px 0 20px;}
+  .section-divider h2{font-size:14px;font-weight:700;white-space:nowrap;}
+  .section-divider::after{content:'';flex:1;height:1px;background:var(--border);}
+  .geo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:20px;}
+  .geo-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;position:relative;overflow:hidden;}
+  .geo-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;}
+  .geo-card.pass::before{background:var(--green);}.geo-card.fail::before{background:var(--red);}.geo-card.na::before{background:var(--muted);}
+  .geo-venue-name{font-size:13px;font-weight:700;letter-spacing:1px;margin-bottom:3px;font-family:var(--font-mono);}
+  .geo-venue-sub{font-size:11px;color:var(--muted);margin-bottom:14px;}
+  .geo-metrics{display:flex;gap:16px;margin-bottom:14px;}
+  .geo-metric{flex:1;}
+  .geo-metric-label{font-size:10px;color:var(--muted);font-family:var(--font-mono);letter-spacing:1px;margin-bottom:4px;}
+  .geo-metric-value{font-size:26px;font-weight:700;font-family:var(--font-mono);}
+  .geo-metric-value.pass{color:var(--green);}.geo-metric-value.fail{color:var(--red);}.geo-metric-value.na{color:var(--muted);}
+  .geo-metric-target{font-size:11px;color:var(--muted);margin-top:2px;}
+  .geo-counts{display:flex;gap:12px;padding-top:12px;border-top:1px solid var(--border);font-size:11px;color:var(--muted);font-family:var(--font-mono);}
+  .geo-counts span b{color:var(--text);}
+  .geo-nodata{color:var(--muted);font-size:13px;padding:20px 0;}
+  .geo-chart-section{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;}
+  .geo-bar-row{display:flex;align-items:center;gap:10px;margin-bottom:6px;}
+  .geo-bar-date{font-size:11px;font-family:var(--font-mono);color:var(--muted);width:58px;flex-shrink:0;}
+  .geo-bar-group{flex:1;display:flex;flex-direction:column;gap:3px;}
+  .geo-bar-line{display:flex;align-items:center;gap:6px;}
+  .geo-bar-tag{font-size:9px;font-family:var(--font-mono);color:var(--muted);width:14px;flex-shrink:0;}
+  .geo-bar-wrap{flex:1;height:14px;background:var(--surface2);border-radius:2px;overflow:hidden;position:relative;}
+  .geo-bar-fill{height:100%;border-radius:2px;transition:width 0.6s cubic-bezier(.4,0,.2,1);}
+  .geo-bar-fill.pass{background:linear-gradient(90deg,#059669,#10b981);}
+  .geo-bar-fill.fail{background:linear-gradient(90deg,#b91c1c,#ef4444);}
+  .geo-bar-target{position:absolute;top:0;bottom:0;width:2px;background:rgba(251,191,36,0.7);}
+  .geo-bar-val{font-size:11px;font-family:var(--font-mono);width:52px;text-align:right;flex-shrink:0;color:var(--muted);}
 </style>
 </head>
 <body>
@@ -124,15 +155,44 @@
       <div class="legend-item" style="margin-left:4px">圖示為早段天氣：☀️晴 ⛅陰 🌧️雨 ⛈️大雨</div>
     </div>
   </div>
+
+  <!-- ===== 地磁監控區塊 ===== -->
+  <div class="section-divider"><h2>🧲 地磁開單監控</h2></div>
+  <div class="geo-grid" id="geoCards"></div>
+  <div class="geo-chart-section">
+    <div class="chart-title"><div class="dot" style="background:#8b5cf6"></div>地磁人工比例趨勢</div>
+    <div class="tab-bar">
+      <button class="tab active" onclick="switchGeoTab('雙和',this)">雙和</button>
+      <button class="tab" onclick="switchGeoTab('台中',this)">台中</button>
+      <button class="tab" onclick="switchGeoTab('南區',this)">南區</button>
+    </div>
+    <div id="geoChart"></div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot" style="background:#10b981"></div>達標</div>
+      <div class="legend-item"><div class="legend-dot" style="background:#ef4444"></div>未達標</div>
+      <div class="legend-item"><div class="legend-dot" style="background:rgba(251,191,36,0.7);height:2px;width:16px;border-radius:0"></div>目標線</div>
+      <div class="legend-item">L=全體人工比例　M=扣除無地磁及故障後比例</div>
+    </div>
+  </div>
 </div>
+
 <script>
 const API_URL='https://script.google.com/macros/s/AKfycbwiGSf4FajeelfoaqU6NrnOl-_LlWLp5JWGT6C6uulJfvBim57lZiJa-PvrTanhiVJV/exec';
 let allData={},allDates=[],currentTab='雙和',currentMonth='';
+let allGeoData={},currentGeoTab='雙和';
+
+const GEO_TARGETS={
+  '雙和':{l:0.15,m:0.09},
+  '台中':{l:0.10,m:0.08},
+  '南區':{l:null,m:null}
+};
+
 function wIcon(w){if(!w)return'';if(w.includes('大雨'))return'⛈️';if(w.includes('雨'))return'🌧️';if(w.includes('陰'))return'⛅';if(w.includes('晴'))return'☀️';return'🌡️';}
 function wScore(w){return w.split('/').reduce((s,x)=>{if(x.includes('大雨'))return s+3;if(x.includes('雨'))return s+2;if(x.includes('陰'))return s+1;return s;},0);}
 function wNote(s){if(s===0)return{text:'晴天，利於開單',cls:'good'};if(s<=2)return{text:'部分時段降雨，績效略受影響',cls:'warn'};if(s<=4)return{text:'多時段降雨，預計影響績效',cls:'warn'};return{text:'全日惡劣天氣，績效明顯受影響',cls:'bad'};}
 function fmt(n){return n>=10000?(n/10000).toFixed(1)+'萬':Number(n).toLocaleString();}
 function fmtFull(n){return Number(n).toLocaleString();}
+function fmtPct(n){return(n*100).toFixed(1)+'%';}
 function getWeekday(dateStr){const parts=dateStr.split('/');const d=new Date(2026,parseInt(parts[0])-1,parseInt(parts[1]));return['日','一','二','三','四','五','六'][d.getDay()];}
 
 async function loadMonth(month) {
@@ -142,7 +202,6 @@ async function loadMonth(month) {
     const json = await res.json();
     if(!json.success) throw new Error(json.error||'API回傳失敗');
 
-    // 更新月份按鈕
     const mb = document.getElementById('monthBtns');
     mb.innerHTML = '';
     (json.availableMonths||[]).forEach(m => {
@@ -173,9 +232,20 @@ async function loadMonth(month) {
     });
     sel.value=allDates[allDates.length-1];
 
+    // 處理地磁資料
+    allGeoData={};
+    (json.geoData||[]).forEach(row=>{
+      const v=row.venue;
+      if(!allGeoData[v])allGeoData[v]=[];
+      allGeoData[v].push(row);
+    });
+
     document.getElementById('loadingArea').style.display='none';
     document.getElementById('mainContent').style.display='block';
-    renderDay(); renderChart();
+    renderDay();
+    renderChart();
+    renderGeoCards();
+    renderGeoChart();
   } catch(e) {
     document.getElementById('loadingArea').innerHTML='<div class="error-box">⚠ 資料載入失敗：'+e.message+'</div>';
   }
@@ -197,6 +267,7 @@ function renderDay(){
   const note=wNote(Math.round(totalScore/3));
   wHtml+=`</div><div class="weather-note ${note.cls}">⚑ ${note.text}</div>`;
   wb.innerHTML=wHtml;
+
   const cards=document.getElementById('summaryCards');
   cards.innerHTML='';
   venues.forEach(v=>{
@@ -204,6 +275,7 @@ function renderDay(){
     const pass=e.total>=e.target;
     cards.innerHTML+=`<div class="card ${pass?'pass':'fail'}"><div class="card-label">${v}場</div><div class="card-value ${pass?'pass':'fail'}">${fmt(e.total)}</div><div class="card-meta">目標 ${fmt(e.target)} · <span class="${pass?'up':'down'}">${e.rate}%</span></div><div class="diff-badge ${pass?'pass':'fail'}">${pass?'▲':'▼'} ${Math.abs(e.diff).toLocaleString()}</div></div>`;
   });
+
   const vb=document.getElementById('venueBlocks');
   vb.innerHTML='';
   venues.forEach(v=>{
@@ -215,7 +287,9 @@ function renderDay(){
     vb.innerHTML+=`<div class="venue ${pass?'pass':'fail'}"><div class="venue-name">${v}場</div><div class="venue-type">${day}(${getWeekday(day)}) · ${e.isHoliday?'假日':'平日'} · 目標 ${fmtFull(e.target)}</div><div class="perf-value ${pass?'pass':'fail'}">${fmtFull(e.total)}</div><div class="diff-badge ${pass?'pass':'fail'}" style="margin-top:6px">${pass?'超標 +':'差距 -'}${Math.abs(e.diff).toLocaleString()} 格</div><div class="venue-weather"><span class="wi">${wIcon(am)}</span><span>${am}</span><span style="opacity:.3">›</span><span class="wi">${wIcon(noon)}</span><span>${noon}</span><span style="opacity:.3">›</span><span class="wi">${wIcon(pm)}</span><span>${pm}</span></div>${impact}<div class="target-row"><span>達成率</span><span>${e.rate}%</span></div></div>`;
   });
 }
-function switchTab(name,btn){currentTab=name;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderChart();}
+
+function switchTab(name,btn){currentTab=name;document.querySelectorAll('.tab-bar:first-of-type .tab').forEach(t=>t.classList.remove('active'));btn.classList.add('active');renderChart();}
+
 function renderChart(){
   const days=allData[currentTab]||[];if(!days.length)return;
   const maxVal=Math.max(...days.map(d=>d.total));
@@ -227,6 +301,102 @@ function renderChart(){
     chart.innerHTML+=`<div class="bar-row"><div class="bar-date">${d.date}(${getWeekday(d.date)})</div><div class="bar-wi" title="${d.weather}">${wIcon(am)}</div><div class="bar-wrap"><div class="bar-fill ${pass?'pass':'fail'}" style="width:${pct}%"></div><div class="bar-target-line" style="left:${tpct}%"></div></div><div class="bar-val">${fmtFull(d.total)}</div></div>`;
   });
 }
+
+// ===== 地磁相關函式 =====
+function renderGeoCards(){
+  const venues=['雙和','台中','南區'];
+  const gc=document.getElementById('geoCards');
+  gc.innerHTML='';
+  venues.forEach(v=>{
+    const t=GEO_TARGETS[v];
+    const data=allGeoData[v];
+    if(!data||!data.length){
+      // 無資料（南區預留）
+      gc.innerHTML+=`<div class="geo-card na"><div class="geo-venue-name">${v}</div><div class="geo-venue-sub">地磁監控</div><div class="geo-nodata">尚無資料</div></div>`;
+      return;
+    }
+    // 取最新一筆
+    const last=data[data.length-1];
+    const lPass=t.l===null?null:last.rateFull<=t.l;
+    const mPass=t.m===null?null:last.rateEx<=t.m;
+    const overallPass=(lPass===null&&mPass===null)?null:(lPass!==false&&mPass!==false);
+    const cls=overallPass===null?'na':overallPass?'pass':'fail';
+
+    gc.innerHTML+=`
+      <div class="geo-card ${cls}">
+        <div class="geo-venue-name">${v}</div>
+        <div class="geo-venue-sub">${last.date} 最新資料</div>
+        <div class="geo-metrics">
+          <div class="geo-metric">
+            <div class="geo-metric-label">L 全體人工比</div>
+            <div class="geo-metric-value ${lPass===null?'na':lPass?'pass':'fail'}">${fmtPct(last.rateFull)}</div>
+            <div class="geo-metric-target">目標 ≤ ${t.l===null?'—':fmtPct(t.l)}</div>
+          </div>
+          <div class="geo-metric">
+            <div class="geo-metric-label">M 扣除後比例</div>
+            <div class="geo-metric-value ${mPass===null?'na':mPass?'pass':'fail'}">${fmtPct(last.rateEx)}</div>
+            <div class="geo-metric-target">目標 ≤ ${t.m===null?'—':fmtPct(t.m)}</div>
+          </div>
+        </div>
+        <div class="geo-counts">
+          <span>停車單 <b>${fmtFull(last.total)}</b></span>
+          <span>訊號 <b>${fmtFull(last.signalCount)}</b></span>
+          <span>人工 <b>${fmtFull(last.manualCount)}</b></span>
+        </div>
+      </div>`;
+  });
+}
+
+function switchGeoTab(name,btn){
+  currentGeoTab=name;
+  document.querySelectorAll('#geoChart').forEach(()=>{});
+  btn.closest('.tab-bar').querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  renderGeoChart();
+}
+
+function renderGeoChart(){
+  const days=allGeoData[currentGeoTab]||[];
+  const chart=document.getElementById('geoChart');
+  if(!days.length){chart.innerHTML='<div style="color:var(--muted);font-size:13px;padding:20px 0">尚無資料</div>';return;}
+  chart.innerHTML='';
+  const t=GEO_TARGETS[currentGeoTab];
+  const maxL=Math.max(...days.map(d=>d.rateFull),t.l||0)*1.2;
+  const maxM=Math.max(...days.map(d=>d.rateEx),t.m||0)*1.2;
+
+  days.forEach(d=>{
+    const lPass=t.l===null?null:d.rateFull<=t.l;
+    const mPass=t.m===null?null:d.rateEx<=t.m;
+    const lPct=(d.rateFull/maxL*100).toFixed(1);
+    const mPct=(d.rateEx/maxM*100).toFixed(1);
+    const lTPct=t.l===null?0:(t.l/maxL*100).toFixed(1);
+    const mTPct=t.m===null?0:(t.m/maxM*100).toFixed(1);
+
+    chart.innerHTML+=`
+      <div class="geo-bar-row">
+        <div class="geo-bar-date">${d.date}</div>
+        <div class="geo-bar-group">
+          <div class="geo-bar-line">
+            <div class="geo-bar-tag">L</div>
+            <div class="geo-bar-wrap">
+              <div class="geo-bar-fill ${lPass===null?'':lPass?'pass':'fail'}" style="width:${lPct}%"></div>
+              ${t.l!==null?`<div class="geo-bar-target" style="left:${lTPct}%"></div>`:''}
+            </div>
+            <div class="geo-bar-val">${fmtPct(d.rateFull)}</div>
+          </div>
+          <div class="geo-bar-line">
+            <div class="geo-bar-tag">M</div>
+            <div class="geo-bar-wrap">
+              <div class="geo-bar-fill ${mPass===null?'':mPass?'pass':'fail'}" style="width:${mPct}%"></div>
+              ${t.m!==null?`<div class="geo-bar-target" style="left:${mTPct}%"></div>`:''}
+            </div>
+            <div class="geo-bar-val">${fmtPct(d.rateEx)}</div>
+          </div>
+        </div>
+      </div>`;
+  });
+}
+
 loadMonth(null);
 </script>
 </body>
